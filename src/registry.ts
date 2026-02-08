@@ -69,7 +69,7 @@ export const SERVICE_REGISTRY: ServiceEntry[] = [
         url: 'https://github.com/yogami/agent-chain-anchor',
         element: 'behavior',
         description: 'Chain-agnostic blockchain anchoring for ZK-SLA proofs, trust score snapshots, and decision audit logs',
-        hasATFMapping: false,
+        hasATFMapping: true,
         capabilities: ['proof-anchoring', 'zk-sla', 'trust-snapshots', 'audit-logs'],
     },
 
@@ -90,7 +90,7 @@ export const SERVICE_REGISTRY: ServiceEntry[] = [
         url: 'https://github.com/yogami/agent-fairness-auditor',
         element: 'data_governance',
         description: 'Bias detection, immutable audit logging, compliance dashboard',
-        hasATFMapping: false,
+        hasATFMapping: true,
         capabilities: ['bias-detection', 'audit-logging', 'compliance-dashboard'],
     },
 
@@ -101,7 +101,7 @@ export const SERVICE_REGISTRY: ServiceEntry[] = [
         url: 'https://github.com/yogami/agent-deadline-enforcer',
         element: 'segmentation',
         description: 'SLA contract registration, automated breach detection and enforcement',
-        hasATFMapping: false,
+        hasATFMapping: true,
         capabilities: ['sla-contracts', 'deadline-enforcement', 'breach-detection'],
     },
     {
@@ -110,7 +110,7 @@ export const SERVICE_REGISTRY: ServiceEntry[] = [
         url: 'https://github.com/yogami/agent-semantic-aligner',
         element: 'segmentation',
         description: 'Vocabulary translation middleware — resolves ontology gaps between agents',
-        hasATFMapping: false,
+        hasATFMapping: true,
         capabilities: ['semantic-translation', 'vocabulary-mapping', 'ontology-bridge'],
     },
 
