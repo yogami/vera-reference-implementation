@@ -1,0 +1,27 @@
+{
+  "name": "atf-reference-implementation",
+  "version": "1.0.0",
+  "description": "Agentic Trust Framework — Reference Implementation by Berlin AI Labs. Unified facade for 12 deployed trust services implementing the CSA ATF specification.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run test"
+  },
+  "keywords": [
+    "atf",
+    "agentic-trust",
+    "zero-trust",
+    "ai-agents",
+    "csa"
+  ],
+  "author": "Berlin AI Labs",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^25.2.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
