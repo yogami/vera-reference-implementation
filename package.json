@@ -1,7 +1,7 @@
 {
-  "name": "atf-reference-implementation",
-  "version": "1.0.0",
-  "description": "Agentic Trust Framework — Reference Implementation by Berlin AI Labs. Unified facade for 12 deployed trust services implementing the CSA ATF specification.",
+  "name": "vera-reference-implementation",
+  "version": "2.0.0",
+  "description": "VERA — Verifiable Enforcement for Runtime Agents — Reference Implementation by Berlin AI Labs. Unified facade for 12 deployed trust services.",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,11 +11,11 @@
     "validate": "npm run typecheck && npm run test"
   },
   "keywords": [
-    "atf",
-    "agentic-trust",
+    "vera",
+    "verifiable-enforcement",
     "zero-trust",
     "ai-agents",
-    "csa"
+    "proof-of-execution"
   ],
   "author": "Berlin AI Labs",
   "license": "MIT",

@@ -1,127 +1,127 @@
 /**
- * ATF Reference Implementation — Service Registry
+ * VERA Reference Implementation — Service Registry
  *
  * This is the single source of truth for all services in the Berlin AI Labs
- * ATF stack. Each entry maps a service to its ATF element, GitHub repo,
+ * VERA stack. Each entry maps a service to its VERA element, GitHub repo,
  * and contract requirements.
  */
 
-export type ATFElement = 'identity' | 'behavior' | 'data_governance' | 'segmentation' | 'incident_response' | 'infrastructure';
+export type VERAPillar = 'identity' | 'proof_of_execution' | 'data_sovereignty' | 'segmentation' | 'containment' | 'infrastructure';
 
 export interface ServiceEntry {
     /** Human-readable name */
     name: string;
-    /** GitHub repo name (under yogami/) */
+    /** GitHub repo name (under berlinailabs/) */
     repo: string;
     /** Full GitHub URL */
     url: string;
-    /** Primary ATF element this service implements */
-    element: ATFElement;
-    /** Secondary elements covered */
-    secondaryElements?: ATFElement[];
+    /** Primary VERA pillar this service implements */
+    pillar: VERAPillar;
+    /** Secondary pillars covered */
+    secondaryPillars?: VERAPillar[];
     /** Brief description */
     description: string;
     /** Production deployment URL (if deployed) */
     productionUrl?: string;
-    /** Whether ATF_MAPPING.md exists in this repo */
-    hasATFMapping: boolean;
+    /** Whether VERA_MAPPING.md exists in this repo */
+    hasVERAMapping: boolean;
     /** Key capabilities */
     capabilities: string[];
 }
 
 export const SERVICE_REGISTRY: ServiceEntry[] = [
-    // ─── Element 1: Identity ───
+    // ─── Pillar 1: Identity ───
     {
         name: 'Agent Trust Verifier',
         repo: 'agent-trust-verifier',
-        url: 'https://github.com/yogami/agent-trust-verifier',
-        element: 'identity',
+        url: 'https://github.com/berlinailabs/agent-trust-verifier',
+        pillar: 'identity',
         description: 'DID:web resolution, Verifiable Credential issuance/verification (JWT-VC), trust score tracking',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['did-resolution', 'vc-issuance', 'vc-verification', 'trust-scoring'],
     },
     {
         name: 'Agent Trust Protocol',
         repo: 'agent-trust-protocol',
-        url: 'https://github.com/yogami/agent-trust-protocol',
-        element: 'identity',
-        secondaryElements: ['segmentation', 'incident_response'],
-        description: 'Reputation scoring, compliance tracking, ATF maturity model & promotion gates, segmentation engine, circuit breaker',
+        url: 'https://github.com/berlinailabs/agent-trust-protocol',
+        pillar: 'identity',
+        secondaryPillars: ['segmentation', 'containment'],
+        description: 'Reputation scoring, compliance tracking, VERA maturity model & promotion gates, segmentation engine, circuit breaker',
         productionUrl: 'https://agent-trust-protocol-production.up.railway.app',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['trust-scoring', 'compliance-tracking', 'maturity-model', 'promotion-gates', 'segmentation', 'circuit-breaker', 'kill-switch'],
     },
 
-    // ─── Element 2: Behavior ───
+    // ─── Pillar 2: Proof of Execution ───
     {
         name: 'Veracity Core (PDP Protocol)',
         repo: 'pdp-protocol',
-        url: 'https://github.com/yogami/pdp-protocol',
-        element: 'behavior',
+        url: 'https://github.com/berlinailabs/pdp-protocol',
+        pillar: 'proof_of_execution',
         description: 'Cryptographic Proof of Execution — Ed25519 signed execution records, hash-chain linking, Solana anchoring',
         productionUrl: 'https://pdp-protocol-production.up.railway.app',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['ed25519-signing', 'hash-chain', 'solana-anchoring', 'a2a-agentcard', 'independent-judge'],
     },
     {
         name: 'Agent Chain Anchor',
         repo: 'agent-chain-anchor',
-        url: 'https://github.com/yogami/agent-chain-anchor',
-        element: 'behavior',
+        url: 'https://github.com/berlinailabs/agent-chain-anchor',
+        pillar: 'proof_of_execution',
         description: 'Chain-agnostic blockchain anchoring for ZK-SLA proofs, trust score snapshots, and decision audit logs',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['proof-anchoring', 'zk-sla', 'trust-snapshots', 'audit-logs'],
     },
 
-    // ─── Element 3: Data Governance ───
+    // ─── Pillar 3: Data Sovereignty ───
     {
         name: 'ConvoGuard AI',
         repo: 'convo-guard-ai',
-        url: 'https://github.com/yogami/convo-guard-ai',
-        element: 'data_governance',
+        url: 'https://github.com/berlinailabs/convo-guard-ai',
+        pillar: 'data_sovereignty',
         description: 'Sub-20ms ONNX inference firewall — prompt injection defense, PII detection, EU AI Act compliance trails',
         productionUrl: 'https://convo-guard-ai-production.up.railway.app',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['injection-defense', 'pii-detection', 'api-key-interception', 'eu-ai-act-mapping', 'signed-audit-logs'],
     },
     {
         name: 'Agent Fairness Auditor',
         repo: 'agent-fairness-auditor',
-        url: 'https://github.com/yogami/agent-fairness-auditor',
-        element: 'data_governance',
+        url: 'https://github.com/berlinailabs/agent-fairness-auditor',
+        pillar: 'data_sovereignty',
         description: 'Bias detection, immutable audit logging, compliance dashboard',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['bias-detection', 'audit-logging', 'compliance-dashboard'],
     },
 
-    // ─── Element 4: Segmentation ───
+    // ─── Pillar 4: Segmentation ───
     {
         name: 'Agent Deadline Enforcer',
         repo: 'agent-deadline-enforcer',
-        url: 'https://github.com/yogami/agent-deadline-enforcer',
-        element: 'segmentation',
+        url: 'https://github.com/berlinailabs/agent-deadline-enforcer',
+        pillar: 'segmentation',
         description: 'SLA contract registration, automated breach detection and enforcement',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['sla-contracts', 'deadline-enforcement', 'breach-detection'],
     },
     {
         name: 'Agent Semantic Aligner',
         repo: 'agent-semantic-aligner',
-        url: 'https://github.com/yogami/agent-semantic-aligner',
-        element: 'segmentation',
+        url: 'https://github.com/berlinailabs/agent-semantic-aligner',
+        pillar: 'segmentation',
         description: 'Vocabulary translation middleware — resolves ontology gaps between agents',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['semantic-translation', 'vocabulary-mapping', 'ontology-bridge'],
     },
 
-    // ─── Element 5: Incident Response ───
+    // ─── Pillar 5: Containment ───
     {
         name: 'Agent Pentest',
         repo: 'agent-pentest',
-        url: 'https://github.com/yogami/agent-pentest',
-        element: 'incident_response',
+        url: 'https://github.com/berlinailabs/agent-pentest',
+        pillar: 'containment',
         description: '41 automated adversarial attack vectors, Safety Score grading (A-F), CI/CD integration',
-        hasATFMapping: true,
+        hasVERAMapping: true,
         capabilities: ['prompt-injection-testing', 'data-exfiltration-testing', 'jailbreak-testing', 'safety-bypass-testing', 'safety-score'],
     },
 
@@ -129,56 +129,56 @@ export const SERVICE_REGISTRY: ServiceEntry[] = [
     {
         name: 'OpenClaw Node (The Operator)',
         repo: 'spy-agent-openclaw',
-        url: 'https://github.com/yogami/spy-agent-openclaw',
-        element: 'infrastructure',
+        url: 'https://github.com/berlinailabs/spy-agent-openclaw',
+        pillar: 'infrastructure',
         description: 'Sovereign execution node — PRISM Level 4 security, staking/slashing vault, zero-trust middleware',
-        hasATFMapping: false,
+        hasVERAMapping: false,
         capabilities: ['zero-trust-middleware', 'staking-slashing', 'dynamic-pricing', 'hardware-attestation'],
     },
     {
         name: 'AgentOps Mission Control',
         repo: 'agent-ops-mission-control',
-        url: 'https://github.com/yogami/agent-ops-mission-control',
-        element: 'infrastructure',
+        url: 'https://github.com/berlinailabs/agent-ops-mission-control',
+        pillar: 'infrastructure',
         description: 'Enterprise agent discovery platform — vendor-neutral search, trust score visualization',
-        hasATFMapping: false,
+        hasVERAMapping: false,
         capabilities: ['agent-discovery', 'fleet-management', 'trust-visualization'],
     },
     {
         name: 'Trust Score & ConvoGuard Demo',
         repo: 'TrustScoreAndConvoGuardDemoWebsite',
-        url: 'https://github.com/yogami/TrustScoreAndConvoGuardDemoWebsite',
-        element: 'infrastructure',
+        url: 'https://github.com/berlinailabs/TrustScoreAndConvoGuardDemoWebsite',
+        pillar: 'infrastructure',
         description: 'Interactive demo website — Trust Score dashboard + ConvoGuard API console',
-        hasATFMapping: false,
+        hasVERAMapping: false,
         capabilities: ['demo-dashboard', 'api-console'],
     },
 ];
 
 // ─── Utility Functions ───
 
-export function getServicesByElement(element: ATFElement): ServiceEntry[] {
+export function getServicesByPillar(pillar: VERAPillar): ServiceEntry[] {
     return SERVICE_REGISTRY.filter(
-        s => s.element === element || s.secondaryElements?.includes(element)
+        s => s.pillar === pillar || s.secondaryPillars?.includes(pillar)
     );
 }
 
-export function getATFElements(): ATFElement[] {
-    return ['identity', 'behavior', 'data_governance', 'segmentation', 'incident_response'];
+export function getVERAPillars(): VERAPillar[] {
+    return ['identity', 'proof_of_execution', 'data_sovereignty', 'segmentation', 'containment'];
 }
 
-export function getElementCoverage(): Record<ATFElement, number> {
+export function getPillarCoverage(): Record<VERAPillar, number> {
     const coverage: Record<string, number> = {};
-    for (const element of getATFElements()) {
-        coverage[element] = getServicesByElement(element).length;
+    for (const pillar of getVERAPillars()) {
+        coverage[pillar] = getServicesByPillar(pillar).length;
     }
-    return coverage as Record<ATFElement, number>;
+    return coverage as Record<VERAPillar, number>;
 }
 
-export function getServicesWithATFMapping(): ServiceEntry[] {
-    return SERVICE_REGISTRY.filter(s => s.hasATFMapping);
+export function getServicesWithVERAMapping(): ServiceEntry[] {
+    return SERVICE_REGISTRY.filter(s => s.hasVERAMapping);
 }
 
-export function getServicesWithoutATFMapping(): ServiceEntry[] {
-    return SERVICE_REGISTRY.filter(s => !s.hasATFMapping && s.element !== 'infrastructure');
+export function getServicesWithoutVERAMapping(): ServiceEntry[] {
+    return SERVICE_REGISTRY.filter(s => !s.hasVERAMapping && s.pillar !== 'infrastructure');
 }

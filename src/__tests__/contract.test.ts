@@ -1,42 +1,42 @@
 /**
- * ATF Contract Validation Tests
+ * VERA Contract Validation Tests
  *
- * These tests validate that the ATF Reference Implementation portfolio
+ * These tests validate that the VERA Reference Implementation portfolio
  * satisfies the contract specification in SPECIFICATION.md.
  *
- * Tests are organized by ATF element and check:
- * 1. Element coverage (every ATF element has ≥1 service)
+ * Tests are organized by VERA pillar and check:
+ * 1. Pillar coverage (every VERA pillar has ≥1 service)
  * 2. Service registry integrity (no orphans, no duplicates)
- * 3. Capability coverage (required capabilities per element)
- * 4. ATF mapping documentation presence
+ * 3. Capability coverage (required capabilities per pillar)
+ * 4. VERA mapping documentation presence
  * 5. Maturity model completeness
  */
 
 import { describe, it, expect } from 'vitest';
 import {
     SERVICE_REGISTRY,
-    getServicesByElement,
-    getATFElements,
-    getElementCoverage,
-    getServicesWithATFMapping,
-    getServicesWithoutATFMapping,
-    type ATFElement,
+    getServicesByPillar,
+    getVERAPillars,
+    getPillarCoverage,
+    getServicesWithVERAMapping,
+    getServicesWithoutVERAMapping,
+    type VERAPillar,
 } from '../registry';
 
-describe('ATF Contract Validation', () => {
+describe('VERA Contract Validation', () => {
 
-    // ─── Element Coverage ───
+    // ─── Pillar Coverage ───
 
-    describe('Element Coverage — Every ATF element must have ≥1 implementation', () => {
-        const elements = getATFElements();
+    describe('Pillar Coverage — Every VERA pillar must have ≥1 implementation', () => {
+        const pillars = getVERAPillars();
 
-        it.each(elements)('Element "%s" has at least one service', (element) => {
-            const services = getServicesByElement(element as ATFElement);
+        it.each(pillars)('Pillar "%s" has at least one service', (pillar) => {
+            const services = getServicesByPillar(pillar as VERAPillar);
             expect(services.length).toBeGreaterThanOrEqual(1);
         });
 
-        it('all 5 ATF elements are covered', () => {
-            const coverage = getElementCoverage();
+        it('all 5 VERA pillars are covered', () => {
+            const coverage = getPillarCoverage();
             const uncovered = Object.entries(coverage).filter(([, count]) => count === 0);
             expect(uncovered).toHaveLength(0);
         });
@@ -59,7 +59,7 @@ describe('ATF Contract Validation', () => {
 
         it('all services have valid GitHub URLs', () => {
             for (const service of SERVICE_REGISTRY) {
-                expect(service.url).toMatch(/^https:\/\/github\.com\/yogami\//);
+                expect(service.url).toMatch(/^https:\/\/github\.com\/berlinailabs\//);
             }
         });
 
@@ -82,9 +82,9 @@ describe('ATF Contract Validation', () => {
 
     // ─── Capability Coverage ───
 
-    describe('Required Capabilities Per Element', () => {
-        it('Identity element has DID or credential capability', () => {
-            const services = getServicesByElement('identity');
+    describe('Required Capabilities Per Pillar', () => {
+        it('Identity pillar has DID or credential capability', () => {
+            const services = getServicesByPillar('identity');
             const allCapabilities = services.flatMap(s => s.capabilities);
             const hasDID = allCapabilities.some(c => c.includes('did'));
             const hasVC = allCapabilities.some(c => c.includes('vc'));
@@ -92,15 +92,15 @@ describe('ATF Contract Validation', () => {
             expect(hasDID || hasVC || hasTrustScore).toBe(true);
         });
 
-        it('Behavior element has structured logging or execution proofs', () => {
-            const services = getServicesByElement('behavior');
+        it('Proof of Execution pillar has structured logging or execution proofs', () => {
+            const services = getServicesByPillar('proof_of_execution');
             const allCapabilities = services.flatMap(s => s.capabilities);
             const hasProofs = allCapabilities.some(c => c.includes('signing') || c.includes('hash-chain') || c.includes('anchoring'));
             expect(hasProofs).toBe(true);
         });
 
-        it('Data Governance element has input validation and PII protection', () => {
-            const services = getServicesByElement('data_governance');
+        it('Data Sovereignty pillar has input validation and PII protection', () => {
+            const services = getServicesByPillar('data_sovereignty');
             const allCapabilities = services.flatMap(s => s.capabilities);
             const hasInjection = allCapabilities.some(c => c.includes('injection'));
             const hasPII = allCapabilities.some(c => c.includes('pii'));
@@ -108,8 +108,8 @@ describe('ATF Contract Validation', () => {
             expect(hasPII).toBe(true);
         });
 
-        it('Segmentation element has access control or rate limiting', () => {
-            const services = getServicesByElement('segmentation');
+        it('Segmentation pillar has access control or rate limiting', () => {
+            const services = getServicesByPillar('segmentation');
             const allCapabilities = services.flatMap(s => s.capabilities);
             const hasACL = allCapabilities.some(c =>
                 c.includes('segmentation') || c.includes('enforcement') || c.includes('sla')
@@ -117,8 +117,8 @@ describe('ATF Contract Validation', () => {
             expect(hasACL).toBe(true);
         });
 
-        it('Incident Response element has adversarial testing or circuit breaker', () => {
-            const services = getServicesByElement('incident_response');
+        it('Containment pillar has adversarial testing or circuit breaker', () => {
+            const services = getServicesByPillar('containment');
             const allCapabilities = services.flatMap(s => s.capabilities);
             const hasTesting = allCapabilities.some(c => c.includes('testing'));
             const hasBreaker = allCapabilities.some(c => c.includes('circuit-breaker') || c.includes('kill-switch'));
@@ -126,22 +126,22 @@ describe('ATF Contract Validation', () => {
         });
     });
 
-    // ─── ATF Mapping Documentation ───
+    // ─── VERA Mapping Documentation ───
 
-    describe('ATF Mapping Documentation', () => {
-        it('all 5 core element services have ATF_MAPPING.md', () => {
-            const coreServices = SERVICE_REGISTRY.filter(s => s.element !== 'infrastructure');
-            const withMapping = coreServices.filter(s => s.hasATFMapping);
-            // At minimum, the primary service per element should have mapping
-            const elements = new Set(withMapping.map(s => s.element));
-            expect(elements.size).toBeGreaterThanOrEqual(4); // 4 of 5 elements have at least one mapped service
+    describe('VERA Mapping Documentation', () => {
+        it('all 5 core pillar services have VERA_MAPPING.md', () => {
+            const coreServices = SERVICE_REGISTRY.filter(s => s.pillar !== 'infrastructure');
+            const withMapping = coreServices.filter(s => s.hasVERAMapping);
+            // At minimum, the primary service per pillar should have mapping
+            const pillars = new Set(withMapping.map(s => s.pillar));
+            expect(pillars.size).toBeGreaterThanOrEqual(4); // 4 of 5 pillars have at least one mapped service
         });
 
-        it('reports services missing ATF_MAPPING.md', () => {
-            const missing = getServicesWithoutATFMapping();
+        it('reports services missing VERA_MAPPING.md', () => {
+            const missing = getServicesWithoutVERAMapping();
             // This is informational — logs which services still need mapping
             for (const service of missing) {
-                console.log(`⚠️ Missing ATF_MAPPING.md: ${service.repo} (${service.element})`);
+                console.log(`⚠️ Missing VERA_MAPPING.md: ${service.repo} (${service.pillar})`);
             }
             // We allow some to be missing, but track them
             expect(missing.length).toBeLessThan(SERVICE_REGISTRY.length);

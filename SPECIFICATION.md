@@ -1,38 +1,38 @@
-# ATF Contract Specification
+# VERA Contract Specification
 
-> This document defines the implementation contracts that each service in the Berlin AI Labs ATF Reference Implementation must satisfy. These contracts are validated by the automated test suite.
+> This document defines the implementation contracts that each service in the Berlin AI Labs VERA Reference Implementation must satisfy. These contracts are validated by the automated test suite.
 
 ## Service Registry
 
-Every service in the ATF stack must declare:
+Every service in the VERA stack must declare:
 
-1. **GitHub Repository** — Public, accessible at `github.com/yogami/{name}`
-2. **ATF Element Mapping** — Which of the 5 ATF elements it implements
-3. **ATF_MAPPING.md** — A file in the repo root documenting compliance
+1. **GitHub Repository** — Public, accessible at `github.com/berlinailabs/{name}`
+2. **VERA Pillar Mapping** — Which of the 5 VERA enforcement pillars it implements
+3. **VERA_MAPPING.md** — A file in the repo root documenting compliance
 4. **Test Suite** — Minimum one test framework configured
 5. **Deployment Target** — Where the service runs in production
 
-## Element Coverage Requirements
+## Pillar Coverage Requirements
 
-The ATF spec defines 5 mandatory elements. This implementation must provide **at least one service per element** with passing tests.
+VERA defines 5 mandatory enforcement pillars. This implementation must provide **at least one service per pillar** with passing tests.
 
-| Element | Minimum Services | Required Capabilities |
-|:--------|:----------------|:---------------------|
+| Pillar | Minimum Services | Required Capabilities |
+|:-------|:----------------|:---------------------|
 | Identity | 1 | DID resolution OR credential issuance |
-| Behavior | 1 | Structured logging OR execution proofs |
-| Data Governance | 1 | Input validation OR output governance |
+| Proof of Execution | 1 | Structured logging OR execution proofs |
+| Data Sovereignty | 1 | Input validation OR output governance |
 | Segmentation | 1 | Resource ACLs OR rate limiting |
-| Incident Response | 1 | Circuit breaker OR adversarial testing |
+| Containment | 1 | Circuit breaker OR adversarial testing |
 
-## Maturity Model Requirements
+## Trust Tier Requirements
 
-The implementation must support the ATF's 4-level maturity model:
+The implementation must support VERA's 4-tier trust model:
 
-| Level | Required Gate Count | Min Gates Automated |
-|:------|:-------------------|:-------------------|
-| Intern → Junior | 2 (Performance, Incident) | 2 |
-| Junior → Senior | 4 (+ Security, Business) | 3 |
-| Senior → Principal | 5 (+ Governance) | 4 |
+| Transition | Required Gate Count | Min Gates Automated |
+|:-----------|:-------------------|:-------------------|
+| T1 → T2 (Intern → Junior) | 2 (Performance, Incident) | 2 |
+| T2 → T3 (Junior → Senior) | 4 (+ Security, Business) | 3 |
+| T3 → T4 (Senior → Principal) | 5 (+ Governance) | 4 |
 
 ## Service Contracts
 
@@ -49,7 +49,7 @@ The implementation must support the ATF's 4-level maturity model:
 - MUST track compliance tags (GDPR, MDR)
 - MUST expose promotion gate evaluation API
 
-### Behavior Services
+### Proof of Execution Services
 
 #### pdp-protocol (Veracity Core)
 - MUST sign execution records with Ed25519
@@ -62,7 +62,7 @@ The implementation must support the ATF's 4-level maturity model:
 - MUST verify existing anchors by transaction ID
 - MUST support multiple chain backends
 
-### Data Governance Services
+### Data Sovereignty Services
 
 #### convo-guard-ai
 - MUST detect prompt injection attempts
@@ -77,24 +77,24 @@ The implementation must support the ATF's 4-level maturity model:
 
 ### Segmentation Services
 
-#### agent-trust-protocol ATF Module
+#### agent-trust-protocol VERA Module
 - MUST evaluate resource access requests against policies
 - MUST enforce rate limits per agent
-- MUST gate capabilities by maturity level
+- MUST gate capabilities by trust tier
 - MUST control agent-to-agent communication permissions
 
 #### agent-deadline-enforcer
 - MUST register SLA contracts with deadlines
 - MUST detect and flag breached tasks
 
-### Incident Response Services
+### Containment Services
 
 #### agent-pentest
 - MUST execute ≥ 40 adversarial test vectors
 - MUST produce Safety Score grade (A-F)
 - MUST support CI/CD integration with `--fail-under`
 
-#### agent-trust-protocol ATF Incident Module
+#### agent-trust-protocol VERA Incident Module
 - MUST implement circuit breaker state machine (closed → open → half-open)
 - MUST implement kill switch with optional auto-resume
 - MUST auto-contain on critical incidents
