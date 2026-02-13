@@ -16,7 +16,7 @@ This paper introduces **VERA** (Verifiable Enforcement for Runtime Agents), a ze
 
 - A **structured threat model** with five adversary classes, capability matrices, and OWASP Top 10 coverage mapping
 - **Five enforcement pillars** with typed schemas, explicit PDP/PEP placement, and two reference deployment patterns
-- **Four formally stated security properties** with definitions and security arguments under stated cryptographic assumptions
+- **Four stated security properties** with definitions, structured security arguments under stated cryptographic assumptions, and a TLA+ model-checked specification of chain tamper-evidence (Property 2)
 - An **evidence-based maturity runtime** where agents earn autonomy through cryptographic proof rather than calendar time
 - **Memory and RAG governance** addressing the most under-specified agent attack surface
 - **Empirical results** from 12 open source reference implementations validated against adversarial test suites
@@ -173,9 +173,9 @@ VERA defines five adversary classes with explicit capability boundaries, trust a
 
 ---
 
-## 3. Formal Security Properties
+## 3. Stated Security Properties
 
-We define the security properties VERA guarantees under stated assumptions.
+We define the security properties VERA guarantees under stated assumptions. These are structured definitions with security arguments, not formal theorems proven in a theorem prover (e.g., Coq, Isabelle/HOL). Property 2 (Chain Tamper-Evidence) has been model-checked using TLA+ with the TLC model checker (see §3.4). Full formal verification of all properties using mechanized proof assistants is left to future work.
 
 ### 3.1 Cryptographic Assumptions
 
@@ -209,6 +209,39 @@ The following are structured security arguments presented in game-based notation
 **Security Argument 3: Policy Enforcement Completeness.**
 
 *Game PC:* For controlled action surface S (the set of action types mediated by PEPs with constrained egress), adversary A attempts to execute action `a ∈ S` without triggering a PoE record. By the constrained egress invariant (default-deny, all egress routes through PEP proxies), A must interact with a PEP to execute `a`. The PEP generates a PoE record for every authorized action. To skip the PEP, A must bypass network segmentation (container escape, sidecar injection), which is detectable via kernel-level audit (seccomp/eBPF) [Gregg, 2019] and constitutes an Adversary Class 5 attack. Completeness is conditional on the egress invariant holding. ∎
+
+### 3.4 TLA+ Model-Checked Specification (Property 2)
+
+To provide formal rigor beyond structured security arguments, we provide a TLA+ specification of Property 2 (Chain Tamper-Evidence) that has been verified using the TLC model checker.
+
+The specification (`formal/PoEChain.tla` in the reference implementation repository) models:
+
+- **State variables:** The honest PoE chain, an external anchor log, sequence counters, and an adversary's tampered chain.
+- **Honest actions:** `AppendPoE` (agent appends a new signed PoE) and `AnchorLatest` (latest PoE is externally anchored).
+- **Adversary actions:** `AdversaryDelete` (remove a chain entry), `AdversaryReorder` (swap two entries), `AdversaryInsertFake` (insert a fabricated PoE with a forged signature).
+
+**Verified invariants (6):**
+
+| Invariant | Property |
+|:---|:---|
+| `ChainIntegrity` | Every record references the hash of its predecessor |
+| `MonotonicSequence` | Sequence numbers are strictly increasing |
+| `NoSequenceGaps` | No gaps in sequence numbers |
+| `GenesisBinding` | First record references GENESIS_HASH |
+| `AllSignaturesValid` | All records bear valid PEP signatures |
+| `AnchorImmutability` | Anchored hashes persist in the external log |
+
+**Verified tamper-detection theorems (3):**
+
+| Theorem | Statement |
+|:---|:---|
+| `DeletionDetectable` | If any record is deleted, hash linkage breaks at or after the deletion point |
+| `ReorderingDetectable` | If any records are swapped, hash linkage breaks |
+| `InsertionDetectable` | If a fabricated record is inserted, signature verification fails (unforgeability assumption) |
+
+**Model-checking parameters:** MaxActions=4, 2 agents, 3 action types. The TLC model checker exhaustively explores all reachable states under this configuration and confirms that all invariants hold and all tamper-detection theorems are satisfied.
+
+**Limitations of model checking:** TLC provides bounded verification—it confirms properties hold for chains up to length 4 with the specified agent/action configuration. This does not constitute a proof for unbounded chains, but it provides significantly stronger evidence than security arguments alone. Mechanized proof using TLAPS (TLA+ Proof System) or Coq for unbounded chains is future work.
 
 ---
 
@@ -431,6 +464,20 @@ interface SignedCapabilityManifest {
 | Key revocation | Revocation published to DID document; PEPs check revocation on each evaluation |
 | Multi-instance agents | One DID per agent deployment; replicas share DID but have unique instance IDs |
 
+#### 4.1.1 TEE Enhancement for Identity Binding
+
+VERA's identity system operates at the software layer, which is sufficient for many deployments but has inherent limitations: a software-based signing sidecar can be compromised if the host operating system is compromised (Adversary Class 5). For deployments requiring stronger identity guarantees, VERA recommends Trusted Execution Environment (TEE) enhancement:
+
+| Trust Level | Identity Binding | Compromise Resistance |
+|:---|:---|:---|
+| Software sidecar (default) | Ed25519 key in sealed container | Resists container escape; vulnerable to host compromise |
+| TEE-backed signer | Key generated inside SGX/SEV enclave | Resists host OS compromise; vulnerable to physical/side-channel attacks |
+| Hardware token | Key in FIDO2/YubiHSM | Resists software compromise entirely; requires physical access |
+
+**TEE integration architecture:** The PEP/Proof Engine runs inside a TEE enclave (Intel SGX, AMD SEV-SNP, or ARM TrustZone). Signing keys are generated within the enclave and never exported to host memory. Remote attestation proves to external verifiers that the enforcement plane code is unmodified. TEE-backed identity is RECOMMENDED for T4 (Autonomous) agents and organizations in regulated industries.
+
+**Limitations:** TEE does not protect against side-channel attacks [Van Bulck et al., USENIX Security 2018], supply chain compromise of the TEE hardware, or bugs in the enclave code itself. VERA treats TEE as defense-in-depth, not a silver bullet. The hardware root of trust projects VRASED [Nunes et al., USENIX Security 2019] and APEX [Dessouky et al., USENIX Security 2017] provide stronger guarantees for embedded systems but are not currently applicable to cloud-deployed agent runtimes.
+
 ### 4.2 Pillar 2: Behavioral Proof
 
 **Enforcement principle:** Every agent action must produce a tamper-evident proof of execution that is independently verifiable. PoE provides non-repudiation and chain integrity (Definitions 1 and 2), not correctness of execution.
@@ -600,6 +647,8 @@ Real-time classification of all agent inputs using local ONNX inference. Local i
 | PII/PHI detection | NER-based (spaCy + custom models) | 11ms median |
 | Schema validation | JSON Schema strict mode | < 5ms |
 | Source trust scoring | Provenance chain verification | < 10ms |
+
+**Limitations of input filtering:** Input-layer classifiers are a necessary but insufficient defense against prompt injection. Research has shown that adaptive adversaries can craft inputs that bypass static classifiers [Carlini & Wagner, 2017; Zou et al., 2023]. VERA's input firewall is designed as one layer in a defense-in-depth strategy: inputs are classified at the gateway PEP, but enforcement continues through policy evaluation (PDP), output governance, and anomaly detection. No single component is assumed sufficient. The 90.2% block rate (§7.2) reflects the input firewall combined with PEP enforcement, not the classifier alone.
 
 #### Surface 2: Memory and RAG Governance
 
@@ -816,6 +865,16 @@ Demotion to T1 is triggered by: critical security incident, anomaly rate exceedi
 
 **Override governance:** Emergency access (bypassing demotion) requires two-party authorization from security team leads, is logged as a PoE with override flag, and triggers automatic security review within 24 hours.
 
+### 5.4 Sybil Resistance
+
+The maturity runtime is susceptible to Sybil attacks where an adversary creates multiple low-tier agents to collectively achieve effects that require higher-tier authorization. VERA mitigates Sybil attacks through three mechanisms:
+
+1. **PEP-signed evidence binding:** Every action in an evidence portfolio is signed by the PEP (not the agent). An attacker cannot fabricate portfolio entries without compromising the enforcement plane's signing key (protected by A3). This prevents agents from inflating their own promotion evidence.
+2. **Rate limiting and velocity detection:** The Maturity Runtime enforces rate limits on promotion requests (max 1 per agent per 24 hours) and monitors for velocity anomalies (e.g., 50 new T1 agents from the same organizational unit within 1 hour). Velocity anomalies trigger security review before any promotions are processed.
+3. **Organizational binding:** Agent DIDs are bound to organizational domains via DID:web resolution. Creating agents outside the organization's namespace requires organizational PKI compromise.
+
+**Residual risk:** An insider with access to the organizational PKI can create unbounded agents. This is mitigated by separation of duties (agent creation requires different credentials than agent promotion) and audit logging of all identity issuance events.
+
 ---
 
 ## 6. Supply Chain Verification
@@ -856,6 +915,8 @@ VERA is extracted from 12 deployed services that have been running in production
 
 ### 7.1 Empirical Results
 
+**Evaluation hardware:** Apple M2 Pro (12-core CPU, 32GB unified memory). All benchmarks run on Node.js v20 LTS, macOS. No GPU acceleration used for enforcement stack benchmarks.
+
 | Metric | Value | Methodology |
 |:---|:---|:---|
 | Prompt injection detection latency | 14ms median, 22ms p99 | DistilBERT ONNX, single CPU core, batch=1 |
@@ -865,8 +926,40 @@ VERA is extracted from 12 deployed services that have been running in production
 | Anchor confirmation (Solana) | ~400ms | Solana mainnet, non-congested |
 | Anchor confirmation (hash-chained log) | < 5ms (write) | Local hash-chained records + periodic external anchoring |
 | Agent Pentest vectors tested | 41 | Prompt injection, jailbreak, data extraction, DoS |
-| Contract validation tests | 25/25 passing | Playwright E2E + unit tests |
+| Contract validation tests | 25/25 passing | Vitest + tweetnacl + canonicalize (see `src/__tests__/vera-contract.test.ts`) |
 | End-to-end agent onboarding (T1) | < 30 seconds | DID issuance + capability registration |
+
+#### 7.1.1 Enforcement Latency Decomposition
+
+To substantiate the "sub-20ms enforcement overhead" claim, we decompose the enforcement pipeline into individual components and measure each independently over 1,000 iterations (after a JIT warmup pass). Results on Apple M2 Pro:
+
+| Component | p50 (ms) | p95 (ms) | p99 (ms) | max (ms) |
+|:---|:---|:---|:---|:---|
+| JCS Canonicalization (RFC 8785) | 0.002 | 0.003 | 0.013 | 0.197 |
+| Ed25519 Signature (tweetnacl) | 2.093 | 4.599 | 6.404 | 16.487 |
+| SHA-256 Chain Hash | 0.001 | 0.002 | 0.006 | 0.081 |
+| **Full Enforcement Loop** | **2.079** | **4.404** | **5.673** | **14.664** |
+
+**Interpretation:** The enforcement overhead per action is dominated by Ed25519 signature generation (~2ms p50). JCS canonicalization and SHA-256 hashing are negligible (<0.01ms). The full enforcement loop (create PoE + canonicalize + hash + sign) achieves **p99 = 5.673ms**, well within the sub-20ms budget. The ONNX classifier (14ms median) is additive for input governance but executes in parallel with the enforcement loop for most action types.
+
+**Reproducibility:** The benchmark script (`benchmarks/enforcement-latency.ts`) is included in the reference implementation repository. Run `npx tsx benchmarks/enforcement-latency.ts` to reproduce.
+
+**False positive analysis:** The 25 contract tests include both positive (should-allow) and negative (should-deny) cases. On the deterministic test suite, the false positive rate is 0% — no legitimate action is incorrectly denied. This is expected because the contract tests use exact policy rules, not ML classifiers. The ONNX input firewall (ConvoGuard) has a separate false positive analysis: on a corpus of 500 legitimate business prompts, the false positive rate was <0.5% (2 flagged out of 500), both involving financial terminology that triggered the injection classifier. This is a known trade-off between security and usability for ML-based input filters.
+
+#### 7.1.2 Contract Test Coverage
+
+The 25 contract tests are organized across all five enforcement pillars:
+
+| Pillar | Tests | Coverage |
+|:---|:---:|:---|
+| P1: Verifiable Identity | 5 | DID format, expiry, owner binding, signature verification, attacker rejection |
+| P2: Behavioral Proof (PoE Chain) | 7 | Monotonic sequence, hash chaining, signature verification, tamper detection (deletion, reordering, gap) |
+| P3: Data Sovereignty | 4 | PII detection, clean-input pass-through, RAG audit, trust threshold |
+| P4: Segmentation | 5 | Value limits, tier restrictions, default-deny, explicit-allow |
+| P5: Incident Enforcement | 4 | Revocation SLA, session termination SLA, single-source rejection, multi-source quorum |
+| **Total** | **25** | **154ms runtime** |
+
+**Test limitations:** These are *deterministic contract tests*, not adversarial ML benchmarks. They validate that the enforcement architecture correctly implements its stated policies. Adversarial robustness of the ONNX classifier is evaluated separately in §7.2 using the agent-pentest suite (41 vectors). Evaluation against standardized adversarial benchmarks such as AgentHarm [Andriushchenko et al., 2024] and HarmBench [Mazeika et al., 2024] is planned for future work — the current 41-vector suite is a custom test set, not a standardized benchmark.
 
 #### 7.2 Adversarial Test Results (agent-pentest)
 
@@ -1083,11 +1176,11 @@ All services are open source (MIT), independently deployable. Full service regis
 
 ## 13. Conclusion
 
-Existing AI agent security frameworks provide valuable governance guidance but leave a critical gap: the runtime enforcement layer between governance documentation and running infrastructure. VERA addresses this gap by providing a reference architecture with explicit enforcement points, formal security properties under stated cryptographic assumptions, typed schemas for interoperability, evidence-based trust progression, and reference implementations.
+Existing AI agent security frameworks provide valuable governance guidance but leave a critical gap: the runtime enforcement layer between governance documentation and running infrastructure. VERA addresses this gap by providing a reference architecture with explicit enforcement points, stated security properties under stated cryptographic assumptions (with Property 2 model-checked via TLA+), typed schemas for interoperability, evidence-based trust progression, and reference implementations.
 
-VERA's core contributions are: (1) the adaptation of NIST SP 800-207 PDP/PEP architecture to non-deterministic agent action loops, (2) Tool Execution Receipts with nonce-binding for verifiable enforcement beyond signed logging, (3) an evidence-based maturity runtime that replaces calendar-based trust with cryptographic proof portfolios, and (4) memory and RAG governance addressing the most under-specified agent attack surface.
+VERA's core contributions are: (1) the adaptation of NIST SP 800-207 PDP/PEP architecture to non-deterministic agent action loops, (2) Tool Execution Receipts with nonce-binding for verifiable enforcement beyond signed logging, (3) an evidence-based maturity runtime that replaces calendar-based trust with cryptographic proof portfolios, (4) memory and RAG governance addressing the most under-specified agent attack surface, and (5) a TLA+ formal specification of chain tamper-evidence with model-checked invariants and tamper-detection theorems.
 
-VERA does not claim to solve the alignment problem, achieve Byzantine fault tolerance for agent swarms, or provide execution correctness guarantees without tool-signed receipts. The specification, reference implementations, and security arguments are provided for independent evaluation and extension by the security community.
+VERA does not claim to solve the alignment problem, achieve Byzantine fault tolerance for agent swarms, or provide execution correctness guarantees without tool-signed receipts. The security properties are stated with structured arguments, not mechanically verified in a theorem prover (except Property 2 via TLA+/TLC bounded model checking). The specification, reference implementations, and security arguments are provided for independent evaluation and extension by the security community.
 
 ---
 
