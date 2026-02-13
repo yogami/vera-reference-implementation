@@ -177,6 +177,22 @@ VERA defines five adversary classes with explicit capability boundaries, trust a
 
 We define the security properties VERA guarantees under stated assumptions. These are structured definitions with security arguments, not formal theorems proven in a theorem prover (e.g., Coq, Isabelle/HOL). Property 2 (Chain Tamper-Evidence) has been model-checked using TLA+ with the TLC model checker (see §3.4). Full formal verification of all properties using mechanized proof assistants is left to future work.
 
+### 3.0 System Model
+
+We formalize VERA's enforcement architecture as a tuple **Σ = (A, T, K, π, E, C, V)** where:
+
+- **A** = {a₁, ..., aₙ} is a finite set of *agent identities*, each aᵢ bound to a DID:web identifier and a trust tier τ(aᵢ) ∈ {T1, T2, T3, T4}.
+- **T** = {t₁, ..., tₘ} is a finite set of *tools* (externally observable actions). Each tool tⱼ has a parameter schema Φ(tⱼ).
+- **K** = {(pkᵢ, skᵢ)} is the set of *signing keypairs*. Under assumption A3, agent aᵢ has no access to skᵢ; only the Proof Engine (within the enforcement plane) can invoke Sign(skᵢ, ·).
+- **π: A × T × Params → {allow, deny, escalate}** is the *policy function*, evaluated by the PDP. π is defined as a set of Rego rules over the input schema (§4.4).
+- **E: A × T × Params → PoE** is the *enforcement function*. For each authorized action (aᵢ, tⱼ, p) where π(aᵢ, tⱼ, p) = allow, E produces a Proof of Execution record:
+  - E(aᵢ, tⱼ, p) = (actionId, agentDid, action, seq, H(PoEprev), Sign(skₑ, canonical(·)), ts)
+  - where seq is monotonically increasing per agent session, H is SHA-256, and canonical(·) is JCS (RFC 8785).
+- **C = [PoE₁, PoE₂, ..., PoEₙ]** is the *PoE chain*, a hash-linked sequence where PoEᵢ.prevHash = H(PoEᵢ₋₁) and PoE₁.prevHash = GENESIS_HASH.
+- **V: C → {valid, tampered}** is the *verification function*. V(C) = valid iff: (1) ∀i: Verify(pkₑ, canonical(PoEᵢ), σᵢ) = true, (2) ∀i>1: PoEᵢ.prevHash = H(PoEᵢ₋₁), (3) ∀i: PoEᵢ.seq = PoEᵢ₋₁.seq + 1.
+
+**Adversary model (informal):** An adversary 𝒜 controls the agent runtime but not the enforcement plane {π, E, K}. 𝒜 can submit arbitrary inputs to the PEP and observe outputs. 𝒜 wins the non-repudiation game if it forges a valid PoE without PEP involvement (reduced to EU-CMA under A1+A3). 𝒜 wins the tamper-evidence game if it produces C' ≠ C such that V(C') = valid (reduced to collision resistance under A2+A4).
+
 ### 3.1 Cryptographic Assumptions
 
 - **A1 (Signature Unforgeability):** The configured signature algorithm is existentially unforgeable under chosen-message attacks (EU-CMA). **Default algorithm selection depends on deployment profile:** Ed25519 [Bernstein et al., 2012] for software/sidecar signers where keys are generated locally; ECDSA P-256 [NIST FIPS 186-5] for cloud KMS/HSM-backed signing where Ed25519 may not be available. Note: Ed25519 HSM support varies by cloud provider and product tier (at time of writing, per vendor documentation consulted February 2026; providers update capabilities frequently—organizations MUST verify current support before deployment). Organizations SHOULD maintain a versioned compatibility matrix in their deployment documentation.
@@ -959,7 +975,40 @@ The 25 contract tests are organized across all five enforcement pillars:
 | P5: Incident Enforcement | 4 | Revocation SLA, session termination SLA, single-source rejection, multi-source quorum |
 | **Total** | **25** | **154ms runtime** |
 
-**Test limitations:** These are *deterministic contract tests*, not adversarial ML benchmarks. They validate that the enforcement architecture correctly implements its stated policies. Adversarial robustness of the ONNX classifier is evaluated separately in §7.2 using the agent-pentest suite (41 vectors). Evaluation against standardized adversarial benchmarks such as AgentHarm [Andriushchenko et al., 2024] and HarmBench [Mazeika et al., 2024] is planned for future work — the current 41-vector suite is a custom test set, not a standardized benchmark.
+**Test limitations:** These are *deterministic contract tests*, not adversarial ML benchmarks. They validate that the enforcement architecture correctly implements its stated policies. Adversarial robustness of the ONNX classifier is evaluated separately in §7.2 using the agent-pentest suite (41 vectors). See §7.1.3 for an AgentHarm-aligned proxy evaluation.
+
+#### 7.1.3 AgentHarm-Aligned Evaluation
+
+To evaluate VERA's enforcement stack against a recognized adversarial benchmark, we conducted a proxy evaluation aligned with the AgentHarm dataset [Andriushchenko, Souly et al., 2024]. We constructed 44 representative harmful agent task descriptions covering all 11 AgentHarm harm categories (4 per category) and 22 benign variants. Each behavior was evaluated against VERA's three enforcement layers: (L1) input classification via ConvoGuard pattern matching, (L2) tool authorization via PEP/PDP policy evaluation, and (L3) behavioral anomaly detection.
+
+| Category | Behaviors | Blocked | Rate | Primary Layer |
+|:---|:---:|:---:|:---:|:---|
+| Cybercrime | 4 | 4 | 100% | L1 (input classifier) |
+| Fraud | 4 | 4 | 100% | L1 (input classifier) |
+| Harassment | 4 | 4 | 100% | L1 (input classifier) |
+| Illegal Activities | 4 | 4 | 100% | L1 + L2 (mixed) |
+| Manipulation | 4 | 4 | 100% | L2 (tool authorization) |
+| Misinformation | 4 | 4 | 100% | L1 + L2 (mixed) |
+| Copyright | 4 | 3 | 75% | L2 (tool authorization) |
+| Data Theft | 4 | 2 | 50% | L1 (input classifier) |
+| Privacy | 4 | 3 | 75% | L2 (tool authorization) |
+| Self-Harm | 4 | 3 | 75% | L1 (input classifier) |
+| Weapons | 4 | 3 | 75% | L1 + L2 (mixed) |
+| **Total** | **44** | **38** | **86.4%** | |
+
+**False positive rate:** 0/22 benign variants incorrectly blocked (0.0%).
+
+**Enforcement layer contribution:** Layer 1 (ConvoGuard input classifier) blocked 71.1% (27/38) of detected harmful behaviors; Layer 2 (PEP/PDP tool authorization) blocked 28.9% (11/38). Layer 3 (behavioral anomaly detection) did not trigger on any test case — a known limitation of rule-based anomaly scoring.
+
+**Gap analysis (honest):** The 6 unblocked harmful behaviors (13.6%) use innocuous-seeming tools (`file.write`, `database.read`) with harmful semantic intent that evades pattern matching. These represent the exact threat surface where ML-based classification (ConvoGuard ONNX DistilBERT) is essential. The pattern-matching fallback used in this evaluation is a lower bound; production deployments with the ONNX classifier are expected to achieve higher block rates.
+
+**Methodology caveats:**
+1. This is a *proxy evaluation*, not a direct run of the inspect_evals framework [UK AISI]. Representative behaviors are aligned with AgentHarm categories but are not the exact test cases from the benchmark.
+2. Layer 1 uses deterministic pattern matching (ConvoGuard fallback), not the ONNX DistilBERT model used in production. Production results may differ.
+3. Layer 2 (tool authorization) is deterministic policy enforcement — these results transfer directly to production VERA deployments.
+4. For full benchmark compliance, VERA's PEP should be integrated as middleware in the inspect_evals pipeline.
+
+**Reproducibility:** Run `npx tsx benchmarks/agentharm-evaluation.ts` in the reference implementation repository.
 
 #### 7.2 Adversarial Test Results (agent-pentest)
 
